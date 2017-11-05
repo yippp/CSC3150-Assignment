@@ -1,3 +1,5 @@
+/* This is the solution to Q2.
+ */
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +25,7 @@ int main(int argc, char *argv[])
     int t1, t2, t3, t4, t5, t6;
     pid_t child1, child2, grandchild;
 
-    t1 = atoi(argv[2]);
+    t1 = atoi(argv[2]); // get time data from arguments
     t2 = atoi(argv[3]);
     t3 = atoi(argv[4]);
     t4 = atoi(argv[5]);
@@ -31,20 +33,20 @@ int main(int argc, char *argv[])
     t6 = atoi(argv[7]);
 
     // shared memory
-    key_t shm_key = ftok(FILENAME, 0);
+    key_t shm_key = ftok(FILENAME, 0); // get the IPC key
     if(shm_key == -1){
         perror("ftok");
         exit(EXIT_FAILURE);
     }
 
-    int shm_size = getpagesize();
+    int shm_size = getpagesize(); // set shared memory size
     int shm_id = shmget(shm_key, shm_size, 0644 | IPC_CREAT);
     if(shm_id == -1){
         perror("shmget");
         exit(EXIT_FAILURE);
     }
 
-    int *idata = (int *)shmat(shm_id, NULL, 0);
+    int *idata = (int *)shmat(shm_id, NULL, 0); // put idata into shared memory
 
     if(idata == (int *)-1){
         perror("shmat");
@@ -53,8 +55,8 @@ int main(int argc, char *argv[])
 
     memset(idata, 0, shm_size);
 
-    key_t sem_key = shm_key;
-    int sem_id = semget(sem_key, 1, 0644 | IPC_CREAT);
+    key_t sem_key = shm_key; // set semaphore key
+    int sem_id = semget(sem_key, 1, 0644 | IPC_CREAT); // set semaphore ID
     if(sem_id == -1){
         perror("semget");
         exit(EXIT_FAILURE);
@@ -66,21 +68,21 @@ int main(int argc, char *argv[])
     }
 
 
-    *idata = atoi(argv[1]);
+    *idata = atoi(argv[1]); // get initial idata from argument
     printf("PID\trole\t\tidata\ttime\n");
 
     // parent process
-    time_t rawtime;
+    time_t rawtime; // time relatived variable
     struct tm * timeinfo;
     time(&rawtime); // get the current time
     timeinfo = localtime(&rawtime);
 
-    printf("%4d\tparent\t\t\t%s\n", getpid(), asctime(timeinfo));
+    printf("%4d\tparent\t\t\t%s\n", getpid(), asctime(timeinfo)); // print process created infomation
     fflush(stdout);
 
     sleep(t1);
 
-    child1 = fork();
+    child1 = fork(); // creat first child process
     if (child1 < 0) {
         perror("fork first child");
         exit(EXIT_FAILURE);
@@ -96,7 +98,7 @@ int main(int argc, char *argv[])
 
         sleep(t3);
 
-        if(sem_p(sem_id) == -1){ // wait
+        if(sem_p(sem_id) == -1){ // semaphore wait
             perror("sem_p(first child)");
             exit(EXIT_FAILURE);
         }
@@ -105,27 +107,27 @@ int main(int argc, char *argv[])
 
         time(&rawtime);
         timeinfo = localtime(&rawtime);
-        printf("%4d\tfirst child\t%d\t%s\n", getpid(), *idata, asctime(timeinfo));
+        printf("%4d\tfirst child\t%d\t%s\n", getpid(), *idata, asctime(timeinfo)); // print procee terminated information
 
-        if(sem_v(sem_id) == -1){ // signal
+        if(sem_v(sem_id) == -1){ // semaphore signal
             perror("sem_v(first child)");
             exit(EXIT_FAILURE);
         }
 
-        if(shmdt(idata) == -1){
+        if(shmdt(idata) == -1){ // disconnect shared memory
             perror("shmdtv(first child)");
             exit(EXIT_FAILURE);
         }
 
         fflush(stdout);
-        exit(0);
+        exit(0); // terminate first child
     }
 
 
     else
     {
         sleep(t2);
-        child2 = fork();
+        child2 = fork(); //create second child
         if (child1 < 0){
             perror("fork second child");
             exit(EXIT_FAILURE);
@@ -135,7 +137,7 @@ int main(int argc, char *argv[])
             // second child process
             time(&rawtime);
             timeinfo = localtime(&rawtime);
-            printf("%4d\tsecond child\t\t%s\n", getpid(), asctime(timeinfo));
+            printf("%4d\tsecond child\t\t%s\n", getpid(), asctime(timeinfo)); // print process created infomation
             fflush(stdout);
 
             sleep(t5);
@@ -149,12 +151,12 @@ int main(int argc, char *argv[])
             {
                 time(&rawtime);
                 timeinfo = localtime(&rawtime);
-                printf("%4d\tgrandchild\t\t%s\n", getpid(), asctime(timeinfo));
+                printf("%4d\tgrandchild\t\t%s\n", getpid(), asctime(timeinfo)); // print procee terminated information
                 fflush(stdout);
 
                 sleep(t6);
 
-                if(sem_p(sem_id) == -1){
+                if(sem_p(sem_id) == -1){ // semaphore wait
                     perror("sem_p(grandchild)");
                     exit(EXIT_FAILURE);
                 }
@@ -165,18 +167,18 @@ int main(int argc, char *argv[])
                 timeinfo = localtime(&rawtime);
                 printf("%4d\tgrandchild\t%d\t%s\n", getpid(), *idata, asctime(timeinfo));
 
-                if(sem_v(sem_id) == -1){
+                if(sem_v(sem_id) == -1){ // semaphore signal
                     perror("sem_v(grandchild)");
                     exit(EXIT_FAILURE);
                 }
 
-                if(shmdt(idata) == -1){
+                if(shmdt(idata) == -1){ // disconnect shared memory
                     perror("shmdt(grandchild)");
                     exit(EXIT_FAILURE);
                 }
 
                 fflush(stdout);
-                exit(0);
+                exit(0); // terminate grandchild
             }
 
 
@@ -185,7 +187,7 @@ int main(int argc, char *argv[])
 
                 sleep(t4);
 
-                if(sem_p(sem_id) == -1){
+                if(sem_p(sem_id) == -1){ // semaphore wait
                     perror("sem_p(second child)");
                     exit(EXIT_FAILURE);
                 }
@@ -195,20 +197,20 @@ int main(int argc, char *argv[])
 
                 time(&rawtime);
                 timeinfo = localtime(&rawtime);
-                printf("%4d\tsecond child\t%d\t%s\n", getpid(), *idata, asctime(timeinfo));
+                printf("%4d\tsecond child\t%d\t%s\n", getpid(), *idata, asctime(timeinfo));// print procee terminated information
 
-                if(sem_v(sem_id) == -1){
+                if(sem_v(sem_id) == -1){ // semaphore signal
                     perror("sem_v(second child)");
                     exit(EXIT_FAILURE);
                 }
 
-                if(shmdt(idata) == -1){
+                if(shmdt(idata) == -1){ // disconnect shared memory
                     perror("shmdt(second child)");
                     exit(EXIT_FAILURE);
                 }
 
                 fflush(stdout);
-                exit(0);
+                exit(0); // termiate second child
             }
         }
 
@@ -216,7 +218,7 @@ int main(int argc, char *argv[])
         else
         {
             // parent process
-            if(sem_p(sem_id) == -1){
+            if(sem_p(sem_id) == -1){ // semaphore wait
                 perror("sem_p(parent)");
                 exit(EXIT_FAILURE);
             }
@@ -226,20 +228,20 @@ int main(int argc, char *argv[])
 
             time(&rawtime);
             timeinfo = localtime(&rawtime);
-            printf("%4d\tparent\t\t%d\t%s\n", getpid(), *idata, asctime(timeinfo));
+            printf("%4d\tparent\t\t%d\t%s\n", getpid(), *idata, asctime(timeinfo)); // print procee terminated information
 
-            if(sem_v(sem_id) == -1){
+            if(sem_v(sem_id) == -1){ // semaphore signal
                 perror("sem_v(parent)");
                 exit(EXIT_FAILURE);
             }
 
-            if(shmdt(idata) == -1){
+            if(shmdt(idata) == -1){ // disconnect shared memory
                 perror("shmdt(parent)");
                 exit(EXIT_FAILURE);
             }
 
             fflush(stdout);
-            return 0;
+            return 0; // terminate parent process
         }
     }
 
